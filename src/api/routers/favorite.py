@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fastapi import APIRouter, HTTPException, status
 
 from src import crud
@@ -13,9 +15,16 @@ async def get_all_favorites_for_user(
     db: DatabaseDependency,
     user: AuthenticationDependency,
     skip: int = 0,
-    limit: int = 100,
+    limit: int | None = None,
+    name: str | None = None,
 ) -> list[ProductSchema]:
-    return crud.get_favorites_for_user(db, user.id, skip, limit)
+    return crud.get_favorites_for_user(
+        db,
+        user.id,
+        skip,
+        limit,
+        name,
+    )
 
 
 @router.post('/favorite', status_code=status.HTTP_201_CREATED)

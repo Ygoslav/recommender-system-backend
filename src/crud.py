@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from src.models.favorites import FavoriteModel
 from src.models.products import ProductModel
+from src.models.user_product_views import UserProductViewsModel
 from src.models.users import UserModel
 from src.schemas.users import UserCreateSchema
 
@@ -44,8 +46,15 @@ def get_products(
     db: Session,
     skip: int = 0,
     limit: int | None = 100,
+    product_name: str | None = None,
 ) -> list[ProductModel]:
-    return db.query(ProductModel).offset(skip).limit(limit).all()
+    return (
+        db.query(ProductModel)
+        .filter(ProductModel.name == product_name if product_name else True)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_favorites_for_user(
@@ -53,11 +62,15 @@ def get_favorites_for_user(
     user_id: int,
     skip: int = 0,
     limit: int | None = 100,
+    product_name: str | None = None,
 ) -> list[ProductModel]:
     return (
         db.query(ProductModel)
         .join(FavoriteModel, FavoriteModel.product_id == ProductModel.id)
-        .filter(FavoriteModel.user_id == user_id)
+        .filter(
+            FavoriteModel.user_id == user_id,
+            ProductModel.name == product_name if product_name else True,
+        )
         .offset(skip)
         .limit(limit)
         .all()
@@ -102,3 +115,15 @@ def delete_product_from_favorites(db: Session, user_id: int, product_id: int) ->
     db.delete(favorite_product)
     db.commit()
     return True
+
+
+def increment_views_count(db: Session, user_id: int, product_id: int) -> None:
+    db.execute(
+        insert(UserProductViewsModel)
+        .values(user_id=user_id, product_id=product_id, views_count=1)
+        .on_conflict_do_update(
+            index_elements=['user_id', 'product_id'],
+            set_={'views_count': UserProductViewsModel.views_count + 1},
+        ),
+    )
+    db.commit()
