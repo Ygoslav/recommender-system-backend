@@ -4,12 +4,24 @@
 
 1. Create ```.env``` file and fill it like .```env-example``` with your data
 
-2. Create venv\
- ```python -m venv .venv```
+2. Create and activate venv
 
-3. Install requirements\
- ```pip install -r requirements.txt```
+    ```
+    python -m venv .venv
+    ```
+
+    ```
+    .venv\Scripts\activate
+    ```
+
+3. Install requirements
+
+    ```
+    pip install -r requirements.txt
+    ```
 
 ## Run
 
-```uvicorn src.main:app```
+```
+uvicorn src.main:app
+```
