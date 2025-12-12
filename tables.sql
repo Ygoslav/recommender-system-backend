@@ -20,3 +20,13 @@ CREATE TABLE
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
     );
+
+CREATE TABLE
+	IF NOT EXISTS user_product_views (
+		user_id INTEGER NOT NULL,
+		product_id INTEGER NOT NULL,
+		views_count INTEGER NOT NULL,
+		PRIMARY KEY (user_id, product_id),
+		FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+		FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+	);
