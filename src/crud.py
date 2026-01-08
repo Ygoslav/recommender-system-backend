@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
+from src.models.carts import CartItemsModel, CartModel, CartStatus
 from src.models.favorites import FavoriteModel
 from src.models.products import ProductModel
 from src.models.user_product_views import UserProductViewsModel
 from src.models.users import UserModel
+from src.schemas.cart import CartItemSchema
 from src.schemas.users import UserCreateSchema
 
 
@@ -127,3 +129,77 @@ def increment_views_count(db: Session, user_id: int, product_id: int) -> None:
         ),
     )
     db.commit()
+
+
+def get_cart(db: Session, user_id: int) -> list[CartItemSchema]:
+    product = aliased(ProductModel, name='product')
+    return [
+        CartItemSchema.model_validate(row, from_attributes=True)
+        for row in db.query(product, CartItemsModel.quantity)
+        .join(
+            CartItemsModel,
+            CartItemsModel.product_id == product.id,
+        )
+        .join(
+            CartModel,
+            (CartModel.id == CartItemsModel.cart_id)
+            & (CartModel.user_id == user_id)
+            & (CartModel.current_status == CartStatus.ACTIVE),
+        )
+        .all()
+    ]
+
+
+def add_product_to_cart(
+    db: Session,
+    user_id: int,
+    product_id: int,
+    quantity: int = 1,
+) -> None:
+    active_cart = (
+        db.query(CartModel)
+        .filter(
+            CartModel.current_status == CartStatus.ACTIVE,
+            CartModel.user_id == user_id,
+        )
+        .first()
+    )
+    if active_cart is None:
+        new_cart = CartModel(user_id=user_id)
+        db.add(new_cart)
+        db.commit()
+        db.refresh(new_cart)
+        active_cart = new_cart
+
+    db.execute(
+        insert(CartItemsModel)
+        .values(cart_id=active_cart.id, product_id=product_id, quantity=quantity)
+        .on_conflict_do_update(
+            index_elements=['cart_id', 'product_id'],
+            set_={'quantity': CartItemsModel.quantity + quantity},
+        ),
+    )
+    db.commit()
+
+
+def delete_product_from_cart(
+    db: Session,
+    user_id: int,
+    product_id: int,
+) -> None:
+    cart_item = (
+        db.query(CartItemsModel)
+        .join(
+            CartModel,
+            (CartModel.id == CartItemsModel.cart_id)
+            & (CartModel.user_id == user_id)
+            & (CartModel.current_status == CartStatus.ACTIVE),
+        )
+        .filter(CartItemsModel.product_id == product_id)
+        .first()
+    )
+    if not cart_item:
+        return False
+    db.delete(cart_item)
+    db.commit()
+    return True
