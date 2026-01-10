@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, aliased
 
@@ -203,3 +204,28 @@ def delete_product_from_cart(
     db.delete(cart_item)
     db.commit()
     return True
+
+
+def get_cart_items_count(db: Session, user_id: int) -> int:
+    return db.execute(
+        select(func.count(1))
+        .select_from(CartItemsModel)
+        .join(
+            CartModel,
+            (CartModel.id == CartItemsModel.cart_id)
+            & (CartModel.user_id == user_id)
+            & (CartModel.current_status == CartStatus.ACTIVE),
+        ),
+    ).first()[0]
+
+
+def close_cart(db: Session, user_id: int) -> None:
+    db.execute(
+        update(CartModel)
+        .where(
+            CartModel.user_id == user_id,
+            CartModel.current_status == CartStatus.ACTIVE,
+        )
+        .values(current_status=CartStatus.CLOSED),
+    )
+    db.commit()
