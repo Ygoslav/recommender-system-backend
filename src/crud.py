@@ -42,7 +42,7 @@ def get_product_by_id(db: Session, product_id: int) -> ProductModel | None:
 
 
 def get_product_by_name(db: Session, product_name: int) -> ProductModel | None:
-    return db.query(ProductModel).filter(ProductModel.name == product_name).first()
+    return db.query(ProductModel).filter(ProductModel.product_name == product_name).first()
 
 
 def get_products(
@@ -53,7 +53,7 @@ def get_products(
 ) -> list[ProductModel]:
     return (
         db.query(ProductModel)
-        .filter(ProductModel.name == product_name if product_name else True)
+        .filter(ProductModel.product_name == product_name if product_name else True)
         .offset(skip)
         .limit(limit)
         .all()
@@ -72,7 +72,7 @@ def get_favorites_for_user(
         .join(FavoriteModel, FavoriteModel.product_id == ProductModel.id)
         .filter(
             FavoriteModel.user_id == user_id,
-            ProductModel.name == product_name if product_name else True,
+            ProductModel.product_name == product_name if product_name else True,
         )
         .offset(skip)
         .limit(limit)
